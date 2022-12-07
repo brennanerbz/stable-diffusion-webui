@@ -136,8 +136,6 @@ class Api:
             "do_not_save_grid": True,
             "mask": mask
         })
-        if populate.sampler_name:
-            populate.sampler_index = None  # prevent a warning later on
 
         args = vars(populate)
         args.pop('include_init_images', None)  # this is meant to be done by "exclude": True in model, but it's for a reason that I cannot determine.
@@ -168,9 +166,6 @@ class Api:
     def save_checkpoint(self, req: SaveCheckpointRequest):
         save_checkpoint_file_from_url(url=req.url)
         return JSONResponse(status_code=200, content={"message": "OK"})
-
-    def img2imgapi(self):
-        raise NotImplementedError
 
     def extrasapi(self):
         raise NotImplementedError
