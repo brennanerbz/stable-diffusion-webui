@@ -111,6 +111,47 @@ class StableDiffusionProcessing():
         self.all_seeds = None
         self.all_subseeds = None
 
+    def img2img_image_conditioning(self, source_image, latent_image, image_mask=None):
+        if self.sampler.conditioning_key not in {'hybrid', 'concat'}:
+            # Dummy zero conditioning if we're not using inpainting model.
+            return latent_image.new_zeros(latent_image.shape[0], 5, 1, 1)
+
+        self.is_using_inpainting_conditioning = True
+
+        # Handle the different mask inputs
+        if image_mask is not None:
+            if torch.is_tensor(image_mask):
+                conditioning_mask = image_mask
+            else:
+                conditioning_mask = np.array(image_mask.convert("L"))
+                conditioning_mask = conditioning_mask.astype(np.float32) / 255.0
+                conditioning_mask = torch.from_numpy(conditioning_mask[None, None])
+
+                # Inpainting model uses a discretized mask as input, so we round to either 1.0 or 0.0
+                conditioning_mask = torch.round(conditioning_mask)
+        else:
+            conditioning_mask = source_image.new_ones(1, 1, *source_image.shape[-2:])
+
+        # Create another latent image, this time with a masked version of the original input.
+        # Smoothly interpolate between the masked and unmasked latent conditioning image using a parameter.
+        conditioning_mask = conditioning_mask.to(source_image.device).to(source_image.dtype)
+        conditioning_image = torch.lerp(
+            source_image,
+            source_image * (1.0 - conditioning_mask),
+            getattr(self, "inpainting_mask_weight", shared.opts.inpainting_mask_weight)
+        )
+
+        # Encode the new masked image using first stage of network.
+        conditioning_image = self.sd_model.get_first_stage_encoding(
+            self.sd_model.encode_first_stage(conditioning_image))
+
+        # Create the concatenated conditioning tensor to be fed to `c_concat`
+        conditioning_mask = torch.nn.functional.interpolate(conditioning_mask, size=latent_image.shape[-2:])
+        conditioning_mask = conditioning_mask.expand(conditioning_image.shape[0], -1, -1, -1)
+        image_conditioning = torch.cat([conditioning_mask, conditioning_image], dim=1)
+        image_conditioning = image_conditioning.to(shared.device).type(self.sd_model.dtype)
+
+        return image_conditioning
 
     def init(self, all_prompts, all_seeds, all_subseeds):
         pass
@@ -750,7 +791,7 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
 
         self.image_conditioning = self.img2img_image_conditioning(image, self.init_latent, image_mask)
 
-    def sample(self, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts):
+    def sample(self, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength):
         x = create_random_tensors([opt_C, self.height // opt_f, self.width // opt_f], seeds=seeds, subseeds=subseeds, subseed_strength=self.subseed_strength, seed_resize_from_h=self.seed_resize_from_h, seed_resize_from_w=self.seed_resize_from_w, p=self)
 
         samples = self.sampler.sample_img2img(self, self.init_latent, x, conditioning, unconditional_conditioning, image_conditioning=self.image_conditioning)

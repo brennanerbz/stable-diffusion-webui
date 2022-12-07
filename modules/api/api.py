@@ -96,8 +96,7 @@ class Api:
             i.save(buffer, format="png")
             b64images.append(base64.b64encode(buffer.getvalue()))
 
-        return TextToImageResponse(images=b64images, parameters=json.dumps(vars(txt2imgreq)),
-                                   info=json.dumps(processed.info))
+        return TextToImageResponse(images=b64images, parameters=json.dumps(vars(txt2imgreq)), info=json.dumps(processed.info))
 
     def img2imgapi(self, img2imgreq: StableDiffusionImg2ImgProcessingAPI):
         print(img2imgreq)
@@ -161,7 +160,7 @@ class Api:
             i.save(buffer, format="png")
             b64images.append(base64.b64encode(buffer.getvalue()))
 
-        return ImageToImageResponse(images=b64images, parameters=vars(img2imgreq), info=json.dumps(processed.info))
+        return ImageToImageResponse(images=b64images, parameters=json.dumps(vars(img2imgreq)), info=json.dumps(processed.info))
 
     def save_checkpoint(self, req: SaveCheckpointRequest):
         save_checkpoint_file_from_url(url=req.url)
