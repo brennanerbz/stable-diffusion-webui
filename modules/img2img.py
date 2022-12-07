@@ -60,6 +60,11 @@ def img2img(mode: int, prompt: str, negative_prompt: str, prompt_style: str, pro
     is_inpaint = mode == 1
     is_batch = mode == 2
 
+    print("args:")
+    for arg in vars():
+        print(f"{arg} = {vars()[arg]}")
+    print("end args")
+
     if is_inpaint:
         if mask_mode == 0:
             image = init_img_with_mask['image']

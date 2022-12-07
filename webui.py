@@ -61,7 +61,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 api = create_api(app)
 
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
     api.launch(server_name="0.0.0.0", port=port)
